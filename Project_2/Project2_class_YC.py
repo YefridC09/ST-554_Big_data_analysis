@@ -20,7 +20,7 @@ class SparkDataCheck:
         
         
     #Method for creating an instance of the class from a csv file
-    @classmethods
+    @classmethod
     def createfrom_csv(cls, spark, file_path: str):
         df = spark.read.load(file_path,
                                 format="csv", 
@@ -31,7 +31,7 @@ class SparkDataCheck:
     
     
     #Method for creating an instance of the class from a pandas dataframe
-    @classmethods
+    @classmethod
     def createfrom_pandas(cls, spark, pd_df: pd.DataFrame):
         df = spark.CreateDataFrame(pd_df)
         return cls(df)
@@ -59,7 +59,7 @@ class SparkDataCheck:
                 #If both limits were input, will check for if they are in the range then create a boolean column indicating which fall in the range
                 self.df = self.df.withColumn("Is_in_range", 
                   F.when(self.df[column].isNull(), None)
-                  .when((self.df[column]>=lower & self.df[column]<=upper), True)
+                  .when((self.df[column]>=lower) & (self.df[column]<=upper), True)
                   .otherwise(False))
               
             
@@ -225,33 +225,33 @@ class SparkDataCheck:
             num_types = ['float', 'int', 'longint', 'bigint', 'double', 'integer']
                 #A dictionary with the columns and their type is created
 
-        if col2 is None:
+            if col2 is None:
 
-            if col1_type.lower() not in num_types:
-                self.n = (self.df
-                              .groupBy(col1)
-                              .agg(F.count("*").alias("Count"))
-                             ).toPandas()
+                if col1_type.lower() not in num_types:
+                    self.n = (self.df
+                                  .groupBy(col1)
+                                  .agg(F.count("*").alias("Count"))
+                                 ).toPandas()
+                else:
+
+                    print(f"The column {col1} is numeric")
+
+                    return None
+
             else:
-                
-                print(f"The column {col1} is numeric")
-                
-                return None
-            
-        else:
-            col2_type = dict_dtypes.get(col2)
-            if col2_type.lower() not in num_types and col1_type.lower() not in num_types:
-                
-                #Counts when the two columns are introduced
-                self.n = (self.df
-                              .groupBy(col1, col2)
-                              .agg(F.count("*").alias("Count"))
-                             ).toPandas()
-            else:
-                print(f"{col1} or {col2} or both are numeric")
-                
-                return None
-    return self.n
+                col2_type = dict_dtypes.get(col2)
+                if col2_type.lower() not in num_types and col1_type.lower() not in num_types:
+
+                    #Counts when the two columns are introduced
+                    self.n = (self.df
+                                  .groupBy(col1, col2)
+                                  .agg(F.count("*").alias("Count"))
+                                 ).toPandas()
+                else:
+                    print(f"{col1} or {col2} or both are numeric")
+
+                    return None
+            return self.n
                       
             
             

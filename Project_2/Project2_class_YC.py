@@ -15,6 +15,8 @@ class SparkDataCheck:
     def __init__(self, df):
         
         self.df = df
+        self.mm = pd.DataFrame()
+        self.n = pd.DataFrame()
         
         
     #Method for creating an instance of the class from a csv file
@@ -123,5 +125,133 @@ class SparkDataCheck:
     #Method to report min and max of a numeric column supplied by the user
     def get_min_max(self, column = None, group = None):
         
-        
+        #When a value for column is supplied
+        if column is not None:
+             #A dictionary with the columns and their type is created
+            dict_dtypes = dict(self.df.dtypes) 
+
+            #The type of the column on which it is going to be verified is extracted and stored in a new variable
+            col_type = dict_dtypes.get(column) 
+
+            #A list with the numeric types of variables is created
+            num_types = ['float', 'int', 'longint', 'bigint', 'double', 'integer']
+
+            #We verify that its type is numeric
+            if col_type is not None and col_type.lower() in num_types:
+                
+                #We verify that the group variable is not None for the first case
+                if group is not None:
+                    
+                    #If the group is defined when calling the method
+                    self.mm = (self.df.groupBy(group)
+                                .agg(F.max(column).alias(f"max_{column}"),
+                                     F.min(column).alias(f"min_{column}"))
+                                .toPandas())
+                    
+                
+                else:
+                    
+                    #If the group is not especified
+                    self.mm = (self.df.agg(F.max(column).alias(f"max_{column}"),
+                                     F.min(column).alias(f"min_{column}"))
+                                 .toPandas())
+                    
+                
+            else:
+                
+                #If the column type is not numeric
+                print(f'The column {column} is not a numeric column')
+                return None
+         
+        #When the column is not supplied
+        else:
+            if group is not None:
+                    
+                #If the group is defined when calling the method
+                    
+                #This will take the numeric columns from the table
+                numeric_cols = [c for c, t in self.df.dtypes if t in ("int", "integer", "bigint", "float", "double", "long")]
+                
+                dfs = []
+                for i in numeric_cols:
+                    pdf = (self.df.groupBy(group)
+                               .agg(F.min(i).alias(f"min_{i}"),
+                                    F.max(i).alias(f"max_{i}"))
+                               .toPandas())
+                    
+                    dfs.append(pdf)
+                
+                self.mm = reduce(
+                    lambda left, right: pd.merge(left, right, on=group, how="outer"),
+                    dfs)
+                
+                
+            else:
+                
+                #When group and column is not an imput, this will calculate min and max for all the columns
+                numeric_cols = [c for c, t in self.df.dtypes if t in ("int", "integer", "bigint", "float", "double", "long")]
+                
+                dfs = []
+                for i in numeric_cols:
+                    pdf = (self.df.agg(F.min(i).alias("min"), 
+                                       F.max(i).alias("max"))
+                                  .toPandas().T)
+                    
+                    
+                    pdf.columns = [i]
+                    
+                    pdf["stat"] = ["min", "max"]
+                    dfs.append(pdf)
+                
+                self.mm = reduce(
+                        lambda left, right: pd.merge(left, right, on="stat", how="outer"),
+                        dfs
+                        ).set_index("stat")
+                    
+        return self.mm
     
+    #Method to report the counts associated with one or two string columns.
+    
+    def get_counts(self, col1, col2 = None):
+        
+            #Checking that the col1 is not numeric
+            dict_dtypes = dict(self.df.dtypes) 
+        
+            #The type of the column on which it is going to be verified is extracted and stored in a new variable
+            col1_type = dict_dtypes.get(col1) 
+
+
+            #A list with the numeric types of variables is created
+            num_types = ['float', 'int', 'longint', 'bigint', 'double', 'integer']
+                #A dictionary with the columns and their type is created
+
+        if col2 is None:
+
+            if col1_type.lower() not in num_types:
+                self.n = (self.df
+                              .groupBy(col1)
+                              .agg(F.count("*").alias("Count"))
+                             ).toPandas()
+            else:
+                
+                print(f"The column {col1} is numeric")
+                
+                return None
+            
+        else:
+            col2_type = dict_dtypes.get(col2)
+            if col2_type.lower() not in num_types and col1_type.lower() not in num_types:
+                
+                #Counts when the two columns are introduced
+                self.n = (self.df
+                              .groupBy(col1, col2)
+                              .agg(F.count("*").alias("Count"))
+                             ).toPandas()
+            else:
+                print(f"{col1} or {col2} or both are numeric")
+                
+                return None
+    return self.n
+                      
+            
+            

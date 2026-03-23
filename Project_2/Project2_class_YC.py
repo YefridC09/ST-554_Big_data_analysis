@@ -33,7 +33,7 @@ class SparkDataCheck:
     #Method for creating an instance of the class from a pandas dataframe
     @classmethod
     def createfrom_pandas(cls, spark, pd_df: pd.DataFrame):
-        df = spark.CreateDataFrame(pd_df)
+        df = spark.createDataFrame(pd_df)
         return cls(df)
     
     #Validation methods creation
@@ -144,16 +144,16 @@ class SparkDataCheck:
                     
                     #If the group is defined when calling the method
                     self.mm = (self.df.groupBy(group)
-                                .agg(F.max(column).alias(f"max_{column}"),
-                                     F.min(column).alias(f"min_{column}"))
+                                .agg(F.max(F.col(column)).alias(f"max_{column}"),
+                                     F.min(F.col(column)).alias(f"min_{column}"))
                                 .toPandas())
                     
                 
                 else:
                     
                     #If the group is not especified
-                    self.mm = (self.df.agg(F.max(column).alias(f"max_{column}"),
-                                     F.min(column).alias(f"min_{column}"))
+                    self.mm = (self.df.agg(F.max(F.col(column)).alias(f"max_{column}"),
+                                     F.min(F.col(column)).alias(f"min_{column}"))
                                  .toPandas())
                     
                 
